@@ -1,7 +1,11 @@
 package com.example;
 
+import com.example.service.TaskTrackerService;
+
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Hello world!");
+        TaskTrackerService taskTrackerService = new TaskTrackerService();
+
+        taskTrackerService.performTaskFromCli(args);
     }
 }
