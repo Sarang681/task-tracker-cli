@@ -61,6 +61,7 @@ public class TaskTrackerMarkDone implements TaskTrackerOperation {
     File file = new File(filePath.toUri());
     try (OutputStream outputStream = new FileOutputStream(file)) {
       outputStream.write(newTaskList.getBytes(StandardCharsets.UTF_8));
+      System.out.println("Task Status Updated To" + taskToUpdate.getStatus());
     } catch (IOException e) {
       System.out.println("Error while adding the new task");
     }

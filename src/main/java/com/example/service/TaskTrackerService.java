@@ -4,6 +4,7 @@ import com.example.operations.TaskTrackerDelete;
 import com.example.operations.TaskTrackerList;
 import com.example.operations.TaskTrackerMarkDone;
 import com.example.operations.TaskTrackerMarkInProgress;
+import com.example.operations.TaskTrackerUpdate;
 import com.example.utils.enums.Command;
 import com.example.operations.TaskTrackerAddition;
 import com.example.operations.TaskTrackerOperation;
@@ -70,6 +71,11 @@ public class TaskTrackerService {
           taskTrackerOperation.performOperation(args, fileContents);
           break;
         }
+      case UPDATE: {
+        taskTrackerOperation = new TaskTrackerUpdate();
+        taskTrackerOperation.performOperation(args, fileContents);
+        break;
+      }
       default:
         {
           System.out.println("Unknown command: " + operation);

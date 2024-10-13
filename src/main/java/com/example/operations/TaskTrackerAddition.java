@@ -53,6 +53,7 @@ public class TaskTrackerAddition implements TaskTrackerOperation {
     File file = new File(filePath.toUri());
     try (OutputStream outputStream = new FileOutputStream(file)) {
       outputStream.write(newTasksJson.getBytes(StandardCharsets.UTF_8));
+      System.out.println("New Task Added Successfully. (ID :: " + newTask.getId() + ")");
     } catch (IOException e) {
       System.out.println("Error while adding the new task");
     }

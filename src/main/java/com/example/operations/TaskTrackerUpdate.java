@@ -13,13 +13,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
-public class TaskTrackerDelete implements TaskTrackerOperation {
+public class TaskTrackerUpdate implements TaskTrackerOperation {
 
   @Override
   public void performOperation(String[] args, String fileContents) {
-
-    if (args.length != 2) {
-      System.out.println("Please enter two arguments");
+    if (args.length != 3) {
+      System.out.println("Please enter three arguments");
       return;
     }
 
@@ -45,11 +44,17 @@ public class TaskTrackerDelete implements TaskTrackerOperation {
     }
 
     int finalTaskId = taskId;
-    Task taskToDelete = tasks.stream().filter(task -> task.getId() == finalTaskId)
-            .findFirst().orElse(null);
+    Task taskToUpdate =
+        tasks.stream().filter(task -> task.getId() == finalTaskId).findFirst().orElse(null);
 
-    if (taskToDelete != null) {
-      tasks.remove(taskToDelete);
+    if (taskToUpdate != null) {
+      String newDescription = args[2];
+      if (!newDescription.trim().isEmpty()) {
+        taskToUpdate.setDescription(newDescription);
+      } else {
+        System.out.println("Task description is empty");
+        return;
+      }
     } else {
       System.out.println("No task found with id " + finalTaskId);
       return;
@@ -61,10 +66,9 @@ public class TaskTrackerDelete implements TaskTrackerOperation {
     File file = new File(filePath.toUri());
     try (OutputStream outputStream = new FileOutputStream(file)) {
       outputStream.write(newTaskList.getBytes(StandardCharsets.UTF_8));
-      System.out.println("Task Deleted Successfully");
+      System.out.println("Task Updated Successfully");
     } catch (IOException e) {
       System.out.println("Error while adding the new task");
     }
-
   }
 }
