@@ -1,8 +1,12 @@
 use clap::Parser;
-use task_tracker::Args;
+use task_tracker::{Arg, Commands};
 
 fn main() {
-    let args = Args::parse();
+    let args = Arg::parse();
 
-    println!("Hello, {}", args.name);
+    if let Commands::Add { task } = args.cmd {
+        println!("Task is :: {}", task);
+    } else {
+        println!("{:?}", args);
+    };
 }
