@@ -27,7 +27,8 @@ impl Arg {
 }
 
 fn add_task(task: &str) {
-    create_file_write_all("./tasks.json", task);
+    let id = create_file_write_all("./tasks.json", task);
+    println!("Task added successfully (ID: {id})");
 }
 
 #[derive(Subcommand, Debug)]
@@ -74,7 +75,7 @@ struct Task {
     updated_at: String,
 }
 
-fn create_file_write_all(file_path: &str, contents: &str) {
+fn create_file_write_all(file_path: &str, contents: &str) -> u32 {
     if fs::metadata(file_path).is_ok() {
         let file = File::open(file_path).expect("Unable to open file!");
         let mut buf_reader = BufReader::new(&file);
@@ -112,6 +113,7 @@ fn create_file_write_all(file_path: &str, contents: &str) {
             .expect("Unable to open file in write mode");
         file.write_all(new_file_contents.as_bytes())
             .expect("Failed to write to file");
+        id
     } else {
         let mut file =
             fs::File::create(file_path).expect("Failed to create file at :: {file_path}");
@@ -127,5 +129,6 @@ fn create_file_write_all(file_path: &str, contents: &str) {
             serde_json::to_string(&tasks).expect("Unable to serialze new task list");
         file.write_all(new_file_contents.as_bytes())
             .expect("Failed to write to file");
+        1
     }
 }
