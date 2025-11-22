@@ -4,11 +4,23 @@ use clap::{Args, Parser, Subcommand};
 #[command(author, version, about, long_about = None)]
 pub struct Arg {
     #[command(subcommand)]
-    pub cmd: Commands,
+    cmd: Commands,
+}
+
+impl Arg {
+    pub fn execute(&self) {
+        match &self.cmd {
+            Commands::Add { task } => println!("Added task :: {task}"),
+            Commands::Update { id, task } => println!("Updated task :: {task} with id :: {id}"),
+            Commands::Delete { id } => println!("Deleted task with id :: {id}"),
+            Commands::Mark(mark_command) => println!("Marked task as :: {:?}", mark_command),
+            Commands::List(list_command) => println!("List task :: {:?}", list_command),
+        }
+    }
 }
 
 #[derive(Subcommand, Debug)]
-pub enum Commands {
+enum Commands {
     Add { task: String },
     Update { id: u32, task: String },
     Delete { id: u32 },
@@ -17,28 +29,27 @@ pub enum Commands {
 }
 
 #[derive(Debug, Args)]
-pub struct MarkCommand {
-    pub id: u32,
+struct MarkCommand {
+    id: u32,
     #[command(subcommand)]
-    pub status: Option<MarkStatus>,
+    status: MarkStatus,
 }
 
 #[derive(Subcommand, Debug, Clone)]
-pub enum MarkStatus {
+enum MarkStatus {
     InProgress,
     Done,
 }
 
 #[derive(Subcommand, Debug, Clone)]
-pub enum ListStatus {
+enum ListStatus {
     Todo,
     InProgress,
     Done,
 }
 
 #[derive(Debug, Args)]
-pub struct ListCommand {
-    pub id: u32,
+struct ListCommand {
     #[command(subcommand)]
     pub status: Option<ListStatus>,
 }
