@@ -1,3 +1,8 @@
+use clap::Parser;
+use task_tracker::Args;
+
 fn main() {
-    println!("Hello, world!");
+    let args = Args::parse();
+
+    println!("Hello, {}", args.name);
 }
