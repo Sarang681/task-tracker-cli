@@ -18,7 +18,7 @@ impl Arg {
     pub fn execute(&self) {
         match &self.cmd {
             Commands::Add { task } => add_task(task),
-            Commands::Update { id, task } => println!("Updated task :: {task} with id :: {id}"),
+            Commands::Update { id, task } => update_task_by_id(*id, task),
             Commands::Delete { id } => println!("Deleted task with id :: {id}"),
             Commands::Mark(mark_command) => println!("Marked task as :: {:?}", mark_command),
             Commands::List(list_command) => println!("List task :: {:?}", list_command),
@@ -30,6 +30,10 @@ fn add_task(task: &str) {
     if let Ok(id) = create_file_write_all("./tasks.json", task) {
         println!("Task added successfully (ID: {id})");
     }
+}
+
+fn update_task_by_id(id: u32, task: &str) {
+    if let Ok(()) = update_file_task("./tasks.json", id, task) {}
 }
 
 #[derive(Subcommand, Debug)]
@@ -118,12 +122,14 @@ fn create_file_write_all(file_path: &str, contents: &str) -> Result<u32, io::Err
     } else {
         id = 1;
     }
+    let binding = Local::now().to_string();
+    let current_time: &str = binding.as_str();
     let new_task = Task {
         id,
         description: contents.to_string(),
         status: TaskStatus::Todo,
-        created_at: Local::now().to_string(),
-        updated_at: Local::now().to_string(),
+        created_at: current_time.to_string(),
+        updated_at: current_time.to_string(),
     };
 
     tasks.push(new_task);
@@ -155,4 +161,75 @@ fn create_file_write_all(file_path: &str, contents: &str) -> Result<u32, io::Err
         return Err(e);
     }
     Ok(id)
+}
+
+fn update_file_task(file_path: &str, id: u32, contents: &str) -> Result<(), io::Error> {
+    let mut file_contents = String::new();
+    match File::open(file_path) {
+        Ok(file_handler) => {
+            let mut buf_reader = BufReader::new(&file_handler);
+
+            if let Err(e) = buf_reader.read_to_string(&mut file_contents) {
+                println!("Unable to read file contents");
+                return Err(e);
+            }
+        }
+        Err(e) => {
+            println!("Failed to read file at :: {file_path}");
+            return Err(e);
+        }
+    }
+    let mut tasks: Vec<Task> = if !file_contents.is_empty() {
+        match serde_json::from_str(&file_contents) {
+            Ok(tasks) => tasks,
+            Err(e) => {
+                println!("Unable to parse file contents");
+                let serde_error = Error::new(io::ErrorKind::InvalidData, e);
+                return Err(serde_error);
+            }
+        }
+    } else {
+        Vec::new()
+    };
+
+    let task = tasks.iter_mut().find(|t| t.id == id);
+    match task {
+        Some(t) => {
+            t.description = contents.to_string();
+            t.updated_at = Local::now().to_string();
+        }
+        None => {
+            println!("Task with id :: {id} not found!");
+            let err = Error::new(io::ErrorKind::NotFound, "Task with id :: {id} not found!");
+            return Err(err);
+        }
+    }
+    let new_file_contents;
+    match serde_json::to_string(&tasks) {
+        Ok(contents) => new_file_contents = contents,
+        Err(e) => {
+            println!("Unable to serialze new task list");
+            let serde_error = Error::new(io::ErrorKind::InvalidData, e);
+            return Err(serde_error);
+        }
+    }
+
+    let mut file;
+    match OpenOptions::new()
+        .write(true)
+        .create(true) // Create the file if it doesn't exist
+        .truncate(true) // Truncate the file to zero length, effectively overwriting
+        .open(file_path)
+    {
+        Ok(file_handler) => file = file_handler,
+        Err(e) => {
+            println!("Unable to open file in write mode");
+            return Err(e);
+        }
+    }
+    if let Err(e) = file.write_all(new_file_contents.as_bytes()) {
+        println!("Failed to write to file");
+        return Err(e);
+    }
+    Ok(())
 }
