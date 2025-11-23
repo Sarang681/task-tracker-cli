@@ -348,7 +348,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "task_tracker"
+name = "task-tracker"
 version = "0.1.0"
 dependencies = [
  "chrono",
