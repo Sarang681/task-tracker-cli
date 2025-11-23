@@ -58,34 +58,34 @@ cargo install --path .
 
 ## ✅ Usage
 
-After installation you’ll have a task-tracker-cli executable. Here are some common commands:
+After installation you’ll have a task-tracker executable. Here are some common commands:
 
 ### Add a task
 ```bash
-task-tracker-cli add "Write project README"
+task-tracker add "Write project README"
 ```
 
 ### Update a task
 ```bash
-task-tracker-cli update 3 "Review and refine documentation"
+task-tracker update 3 "Review and refine documentation"
 ```
 
 ### Delete a task
 ```bash
-task-tracker-cli delete 5
+task-tracker delete 5
 ```
 
 ### Mark a task’s status
 ```bash
-task-tracker-cli mark 2 in-progress
-task-tracker-cli mark 2 done
+task-tracker mark 2 in-progress
+task-tracker mark 2 done
 ```
 
 ### List tasks
 ```bash
-task-tracker-cli list
-task-tracker-cli list in-progress
-task-tracker-cli list done
+task-tracker list
+task-tracker list in-progress
+task-tracker list done
 ```
 
 ## 🧩 Command Reference
