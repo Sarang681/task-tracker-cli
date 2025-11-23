@@ -43,10 +43,18 @@ pub fn mark_task_by_id(mark_command: &MarkCommand) {
 
 pub fn list_tasks(list_command: &ListCommand) {
     if let Ok(task) = handle_list_tasks(list_command) {
-        if let Ok(stringified_tasks) = files::convert_tasks_to_string(&task) {
-            println!("Tasks :: {}", stringified_tasks);
-        } else {
-            println!("Error fetching tasks");
+        // Print table header
+        println!("{:<5} | {:<50} | {:<12}", "ID", "Task", "Status");
+        println!("{}", "-".repeat(75));
+
+        // Print each task row
+        for t in task {
+            println!(
+                "{:<5} | {:<50} | {:<12}",
+                t.id,
+                t.description,
+                format!("{:?}", t.status)
+            );
         }
     }
 }
