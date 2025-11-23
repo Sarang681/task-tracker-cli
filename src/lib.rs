@@ -19,21 +19,38 @@ impl Arg {
         match &self.cmd {
             Commands::Add { task } => add_task(task),
             Commands::Update { id, task } => update_task_by_id(*id, task),
-            Commands::Delete { id } => println!("Deleted task with id :: {id}"),
-            Commands::Mark(mark_command) => println!("Marked task as :: {:?}", mark_command),
+            Commands::Delete { id } => delete_task_by_id(*id),
+            Commands::Mark(mark_command) => mark_task_by_id(mark_command),
             Commands::List(list_command) => println!("List task :: {:?}", list_command),
         }
     }
 }
 
 fn add_task(task: &str) {
-    if let Ok(id) = create_file_write_all("./tasks.json", task) {
+    if let Ok(id) = handle_add_task("./tasks.json", task) {
         println!("Task added successfully (ID: {id})");
     }
 }
 
 fn update_task_by_id(id: u32, task: &str) {
-    if let Ok(()) = update_file_task("./tasks.json", id, task) {}
+    if let Ok(()) = handle_update_task("./tasks.json", id, task) {
+        println!("Task with id : {} updated succesfully!", id);
+    }
+}
+
+fn delete_task_by_id(id: u32) {
+    if let Ok(()) = handle_delete_task("./tasks.json", id) {
+        println!("Task with id : {} deleted successfully!", id);
+    }
+}
+
+fn mark_task_by_id(mark_command: &MarkCommand) {
+    if let Ok(()) = handle_mark_task("./tasks.json", mark_command) {
+        println!(
+            "Successfully marked task with id : {} as {:?}",
+            mark_command.id, mark_command.status
+        );
+    }
 }
 
 #[derive(Subcommand, Debug)]
@@ -80,7 +97,7 @@ struct Task {
     updated_at: String,
 }
 
-fn create_file_write_all(file_path: &str, contents: &str) -> Result<u32, io::Error> {
+fn handle_add_task(file_path: &str, contents: &str) -> Result<u32, io::Error> {
     let mut file_contents = String::new();
     match File::open(file_path) {
         Ok(file_handler) => {
@@ -104,18 +121,7 @@ fn create_file_write_all(file_path: &str, contents: &str) -> Result<u32, io::Err
             }
         },
     }
-    let mut tasks: Vec<Task> = if !file_contents.is_empty() {
-        match serde_json::from_str(&file_contents) {
-            Ok(tasks) => tasks,
-            Err(e) => {
-                println!("Unable to parse file contents");
-                let serde_error = Error::new(io::ErrorKind::InvalidData, e);
-                return Err(serde_error);
-            }
-        }
-    } else {
-        Vec::new()
-    };
+    let mut tasks = extract_tasks_from_file_contents(file_contents)?;
     let id;
     if let Some(last_task) = tasks.last() {
         id = last_task.id + 1;
@@ -134,36 +140,81 @@ fn create_file_write_all(file_path: &str, contents: &str) -> Result<u32, io::Err
 
     tasks.push(new_task);
 
-    let new_file_contents;
-    match serde_json::to_string(&tasks) {
-        Ok(contents) => new_file_contents = contents,
-        Err(e) => {
-            println!("Unable to serialze new task list");
-            let serde_error = Error::new(io::ErrorKind::InvalidData, e);
-            return Err(serde_error);
-        }
-    }
-    let mut file;
-    match OpenOptions::new()
-        .write(true)
-        .create(true) // Create the file if it doesn't exist
-        .truncate(true) // Truncate the file to zero length, effectively overwriting
-        .open(file_path)
-    {
-        Ok(file_handler) => file = file_handler,
-        Err(e) => {
-            println!("Unable to open file in write mode");
-            return Err(e);
-        }
-    }
-    if let Err(e) = file.write_all(new_file_contents.as_bytes()) {
-        println!("Failed to write to file");
-        return Err(e);
-    }
+    let new_file_contents = convert_tasks_to_string(tasks)?;
+    write_contents_to_file(file_path, new_file_contents)?;
     Ok(id)
 }
 
-fn update_file_task(file_path: &str, id: u32, contents: &str) -> Result<(), io::Error> {
+fn handle_update_task(file_path: &str, id: u32, contents: &str) -> Result<(), io::Error> {
+    let file_contents = extract_file_contents_from_file(file_path)?;
+    let mut tasks = extract_tasks_from_file_contents(file_contents)?;
+
+    let task = tasks.iter_mut().find(|t| t.id == id);
+    match task {
+        Some(t) => {
+            t.description = contents.to_string();
+            t.updated_at = Local::now().to_string();
+        }
+        None => {
+            println!("Task with id :: {id} not found!");
+            let err = Error::new(io::ErrorKind::NotFound, "Task with id :: {id} not found!");
+            return Err(err);
+        }
+    }
+    let new_file_contents = convert_tasks_to_string(tasks)?;
+    write_contents_to_file(file_path, new_file_contents)?;
+    Ok(())
+}
+
+fn handle_delete_task(file_path: &str, id: u32) -> Result<(), io::Error> {
+    let file_contents = extract_file_contents_from_file(file_path)?;
+
+    let mut tasks = extract_tasks_from_file_contents(file_contents)?;
+
+    if let None = tasks.iter().find(|task| task.id == id) {
+        println!("Task with id : {} not found!", id);
+        let not_found_error = Error::new(io::ErrorKind::NotFound, "Task with id : {} not found!");
+        return Err(not_found_error);
+    }
+
+    tasks.retain(|task| task.id != id);
+
+    let new_file_contents = match serde_json::to_string(&tasks) {
+        Ok(value) => value,
+        Err(e) => {
+            println!("Error writing tasks to file");
+            let serde_error = Error::new(io::ErrorKind::InvalidData, e);
+            return Err(serde_error);
+        }
+    };
+    write_contents_to_file(file_path, new_file_contents)?;
+    Ok(())
+}
+
+fn handle_mark_task(file_path: &str, mark_command: &MarkCommand) -> Result<(), Error> {
+    let file_contents = extract_file_contents_from_file(file_path)?;
+
+    let mut tasks = extract_tasks_from_file_contents(file_contents)?;
+
+    if let Some(task) = tasks.iter_mut().find(|task| task.id == mark_command.id) {
+        let task_status = match mark_command.status {
+            MarkStatus::InProgress => TaskStatus::InProgress,
+            MarkStatus::Done => TaskStatus::Done,
+        };
+        task.status = task_status;
+        task.updated_at = Local::now().to_string();
+    } else {
+        println!("Task with id : {} not found!", mark_command.id);
+        let not_found_error = Error::new(io::ErrorKind::NotFound, "Task with id : {} not found!");
+        return Err(not_found_error);
+    }
+
+    let new_file_contents = convert_tasks_to_string(tasks)?;
+    write_contents_to_file(file_path, new_file_contents)?;
+    Ok(())
+}
+
+fn extract_file_contents_from_file(file_path: &str) -> Result<String, Error> {
     let mut file_contents = String::new();
     match File::open(file_path) {
         Ok(file_handler) => {
@@ -179,7 +230,11 @@ fn update_file_task(file_path: &str, id: u32, contents: &str) -> Result<(), io::
             return Err(e);
         }
     }
-    let mut tasks: Vec<Task> = if !file_contents.is_empty() {
+    Ok(file_contents)
+}
+
+fn extract_tasks_from_file_contents(file_contents: String) -> Result<Vec<Task>, Error> {
+    let tasks: Vec<Task> = if !file_contents.is_empty() {
         match serde_json::from_str(&file_contents) {
             Ok(tasks) => tasks,
             Err(e) => {
@@ -191,29 +246,10 @@ fn update_file_task(file_path: &str, id: u32, contents: &str) -> Result<(), io::
     } else {
         Vec::new()
     };
+    Ok(tasks)
+}
 
-    let task = tasks.iter_mut().find(|t| t.id == id);
-    match task {
-        Some(t) => {
-            t.description = contents.to_string();
-            t.updated_at = Local::now().to_string();
-        }
-        None => {
-            println!("Task with id :: {id} not found!");
-            let err = Error::new(io::ErrorKind::NotFound, "Task with id :: {id} not found!");
-            return Err(err);
-        }
-    }
-    let new_file_contents;
-    match serde_json::to_string(&tasks) {
-        Ok(contents) => new_file_contents = contents,
-        Err(e) => {
-            println!("Unable to serialze new task list");
-            let serde_error = Error::new(io::ErrorKind::InvalidData, e);
-            return Err(serde_error);
-        }
-    }
-
+fn write_contents_to_file(file_path: &str, new_file_contents: String) -> Result<(), Error> {
     let mut file;
     match OpenOptions::new()
         .write(true)
@@ -232,4 +268,17 @@ fn update_file_task(file_path: &str, id: u32, contents: &str) -> Result<(), io::
         return Err(e);
     }
     Ok(())
+}
+
+fn convert_tasks_to_string(tasks: Vec<Task>) -> Result<String, Error> {
+    let new_file_contents;
+    match serde_json::to_string(&tasks) {
+        Ok(contents) => new_file_contents = contents,
+        Err(e) => {
+            println!("Unable to serialze new task list");
+            let serde_error = Error::new(io::ErrorKind::InvalidData, e);
+            return Err(serde_error);
+        }
+    }
+    Ok(new_file_contents)
 }
