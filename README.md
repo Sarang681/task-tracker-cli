@@ -104,6 +104,10 @@ task-tracker-cli list done
 
 The tool saves tasks locally in a JSON file (as configured). Each task record includes a unique ID, description, and status (Todo, In Progress, Done). Because everything’s stored locally with minimal overhead, you can easily move the file, back it up, or integrate the CLI into shell scripts.
 
+## 🌐 Project Reference
+This CLI is inspired by and aligned with the Task Tracker project from Roadmap.sh:
+https://roadmap.sh/projects/task-tracker
+
 ## 🧪 Contributing
 
 1. Contributions are welcome! If you’d like to contribute:
