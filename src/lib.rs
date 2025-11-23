@@ -21,7 +21,7 @@ impl Arg {
             Commands::Update { id, task } => update_task_by_id(*id, task),
             Commands::Delete { id } => delete_task_by_id(*id),
             Commands::Mark(mark_command) => mark_task_by_id(mark_command),
-            Commands::List(list_command) => println!("List task :: {:?}", list_command),
+            Commands::List(list_command) => list_tasks(list_command),
         }
     }
 }
@@ -53,6 +53,16 @@ fn mark_task_by_id(mark_command: &MarkCommand) {
     }
 }
 
+fn list_tasks(list_command: &ListCommand) {
+    if let Ok(task) = handle_list_tasks("./tasks.json", list_command) {
+        if let Ok(stringified_tasks) = convert_tasks_to_string(&task) {
+            println!("Tasks :: {}", stringified_tasks);
+        } else {
+            println!("Error fetching tasks");
+        }
+    }
+}
+
 #[derive(Subcommand, Debug)]
 enum Commands {
     Add { task: String },
@@ -75,7 +85,7 @@ enum MarkStatus {
     Done,
 }
 
-#[derive(Subcommand, Debug, Clone, Serialize, Deserialize)]
+#[derive(Subcommand, Debug, Clone, Serialize, Deserialize, PartialEq)]
 enum TaskStatus {
     Todo,
     InProgress,
@@ -121,7 +131,7 @@ fn handle_add_task(file_path: &str, contents: &str) -> Result<u32, io::Error> {
             }
         },
     }
-    let mut tasks = extract_tasks_from_file_contents(file_contents)?;
+    let mut tasks = extract_tasks_from_file_contents(&file_contents)?;
     let id;
     if let Some(last_task) = tasks.last() {
         id = last_task.id + 1;
@@ -140,14 +150,14 @@ fn handle_add_task(file_path: &str, contents: &str) -> Result<u32, io::Error> {
 
     tasks.push(new_task);
 
-    let new_file_contents = convert_tasks_to_string(tasks)?;
-    write_contents_to_file(file_path, new_file_contents)?;
+    let new_file_contents = convert_tasks_to_string(&tasks)?;
+    write_contents_to_file(file_path, &new_file_contents)?;
     Ok(id)
 }
 
 fn handle_update_task(file_path: &str, id: u32, contents: &str) -> Result<(), io::Error> {
     let file_contents = extract_file_contents_from_file(file_path)?;
-    let mut tasks = extract_tasks_from_file_contents(file_contents)?;
+    let mut tasks = extract_tasks_from_file_contents(&file_contents)?;
 
     let task = tasks.iter_mut().find(|t| t.id == id);
     match task {
@@ -161,15 +171,15 @@ fn handle_update_task(file_path: &str, id: u32, contents: &str) -> Result<(), io
             return Err(err);
         }
     }
-    let new_file_contents = convert_tasks_to_string(tasks)?;
-    write_contents_to_file(file_path, new_file_contents)?;
+    let new_file_contents = convert_tasks_to_string(&tasks)?;
+    write_contents_to_file(file_path, &new_file_contents)?;
     Ok(())
 }
 
 fn handle_delete_task(file_path: &str, id: u32) -> Result<(), io::Error> {
     let file_contents = extract_file_contents_from_file(file_path)?;
 
-    let mut tasks = extract_tasks_from_file_contents(file_contents)?;
+    let mut tasks = extract_tasks_from_file_contents(&file_contents)?;
 
     if let None = tasks.iter().find(|task| task.id == id) {
         println!("Task with id : {} not found!", id);
@@ -187,14 +197,14 @@ fn handle_delete_task(file_path: &str, id: u32) -> Result<(), io::Error> {
             return Err(serde_error);
         }
     };
-    write_contents_to_file(file_path, new_file_contents)?;
+    write_contents_to_file(file_path, &new_file_contents)?;
     Ok(())
 }
 
 fn handle_mark_task(file_path: &str, mark_command: &MarkCommand) -> Result<(), Error> {
     let file_contents = extract_file_contents_from_file(file_path)?;
 
-    let mut tasks = extract_tasks_from_file_contents(file_contents)?;
+    let mut tasks = extract_tasks_from_file_contents(&file_contents)?;
 
     if let Some(task) = tasks.iter_mut().find(|task| task.id == mark_command.id) {
         let task_status = match mark_command.status {
@@ -209,9 +219,22 @@ fn handle_mark_task(file_path: &str, mark_command: &MarkCommand) -> Result<(), E
         return Err(not_found_error);
     }
 
-    let new_file_contents = convert_tasks_to_string(tasks)?;
-    write_contents_to_file(file_path, new_file_contents)?;
+    let new_file_contents = convert_tasks_to_string(&tasks)?;
+    write_contents_to_file(file_path, &new_file_contents)?;
     Ok(())
+}
+
+fn handle_list_tasks(file_path: &str, list_command: &ListCommand) -> Result<Vec<Task>, Error> {
+    let file_contents = extract_file_contents_from_file(file_path)?;
+
+    let tasks = extract_tasks_from_file_contents(&file_contents)?;
+
+    if let Some(filter) = &list_command.status {
+        let filtered_tasks = tasks.into_iter().filter(|t| t.status == *filter).collect();
+        Ok(filtered_tasks)
+    } else {
+        Ok(tasks)
+    }
 }
 
 fn extract_file_contents_from_file(file_path: &str) -> Result<String, Error> {
@@ -233,7 +256,7 @@ fn extract_file_contents_from_file(file_path: &str) -> Result<String, Error> {
     Ok(file_contents)
 }
 
-fn extract_tasks_from_file_contents(file_contents: String) -> Result<Vec<Task>, Error> {
+fn extract_tasks_from_file_contents(file_contents: &str) -> Result<Vec<Task>, Error> {
     let tasks: Vec<Task> = if !file_contents.is_empty() {
         match serde_json::from_str(&file_contents) {
             Ok(tasks) => tasks,
@@ -249,7 +272,7 @@ fn extract_tasks_from_file_contents(file_contents: String) -> Result<Vec<Task>, 
     Ok(tasks)
 }
 
-fn write_contents_to_file(file_path: &str, new_file_contents: String) -> Result<(), Error> {
+fn write_contents_to_file(file_path: &str, new_file_contents: &str) -> Result<(), Error> {
     let mut file;
     match OpenOptions::new()
         .write(true)
@@ -270,7 +293,7 @@ fn write_contents_to_file(file_path: &str, new_file_contents: String) -> Result<
     Ok(())
 }
 
-fn convert_tasks_to_string(tasks: Vec<Task>) -> Result<String, Error> {
+fn convert_tasks_to_string(tasks: &Vec<Task>) -> Result<String, Error> {
     let new_file_contents;
     match serde_json::to_string(&tasks) {
         Ok(contents) => new_file_contents = contents,
