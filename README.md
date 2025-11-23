@@ -18,6 +18,30 @@ A simple, fast command-line tool for managing tasks—perfect for keeping track 
 
 - Minimal dependencies — built with native file system handling and straightforward error handling.
 
+## ⚙️ Configuration
+
+Task Tracker CLI uses a Config.toml file located in the project root to determine where tasks are stored.
+
+### Example Config.toml
+
+```toml
+[storage]
+directory = "/home/my-user/.config/task-tracker"
+```
+
+### Important
+The directory you specify must already exist.
+If it doesn’t, create it before running the CLI:
+```bash
+mkdir -p /home/my-user/.config/task-tracker
+```
+
+### Defaults
+If no Config.toml is found, Task Tracker CLI stores tasks in:
+```bash
+./tasks.json
+```
+
 ## 📦 Installation
 
 ```bash
@@ -76,9 +100,9 @@ task-tracker-cli list done
 
 - **List**: Lists all tasks, optionally filtered by status.
 
-## ⚙️ How It Works
+## 🗄️ How It Works
 
-The tool saves tasks locally in a JSON file (in the current directory). Each task record includes a unique ID, description, and status (Todo, In Progress, Done). Because everything’s stored locally with minimal overhead, you can easily move the file, back it up, or integrate the CLI into shell scripts.
+The tool saves tasks locally in a JSON file (as configured). Each task record includes a unique ID, description, and status (Todo, In Progress, Done). Because everything’s stored locally with minimal overhead, you can easily move the file, back it up, or integrate the CLI into shell scripts.
 
 ## 🧪 Contributing
 
