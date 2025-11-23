@@ -1,6 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 
+mod config;
 mod files;
 mod tasks;
 

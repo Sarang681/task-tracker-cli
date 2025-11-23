@@ -3,6 +3,7 @@ use std::{
     io::{self, BufReader, Error, ErrorKind, Read, Write},
 };
 
+use crate::config;
 use crate::tasks::Task;
 
 pub fn read_from_file_and_creat_if_not_exists(file_path: &str) -> Result<String, Error> {
@@ -19,7 +20,7 @@ pub fn read_from_file_and_creat_if_not_exists(file_path: &str) -> Result<String,
         Err(e) => match e.kind() {
             io::ErrorKind::NotFound => {
                 if let Err(e) = fs::File::create(file_path) {
-                    println!("Failed to create file at :: {file_path}");
+                    println!("Failed to create file at :: {file_path} : {:?}", e);
                     return Err(e);
                 }
             }
@@ -99,4 +100,19 @@ pub fn convert_tasks_to_string(tasks: &Vec<Task>) -> Result<String, Error> {
         }
     }
     Ok(new_file_contents)
+}
+
+pub fn fetch_file_path() -> Result<String, Error> {
+    let file_path;
+    if let Ok(path) = config::fetch_json_file_path_from_config() {
+        file_path = path;
+    } else {
+        println!("Failed to fetch json file from config");
+        let err = Error::new(
+            io::ErrorKind::Other,
+            "Failed to fetch json file from config",
+        );
+        return Err(err);
+    }
+    Ok(file_path)
 }
